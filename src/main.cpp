@@ -22,6 +22,7 @@
 #include <clocale>
 #include <memory>
 #include <utility>
+#include <iostream>
 // IWYU pragma: no_include <type_traits>
 
 #include <Qt>
@@ -210,6 +211,47 @@ int main(int argc, char** argv)
 		
 		// Treat all program parameters as files to be opened
 		auto const arguments = firstRemoved(QCoreApplication::arguments());
+		if (!arguments.isEmpty() && arguments.first() == QString::fromLatin1("--cli"))
+		{
+			if (arguments.size() < 2)
+			{
+				std::cerr << "missing CLI command\n";
+				QApplication::quit();
+				return;
+			}
+			const QString cliCommand = arguments[1];
+			const QStringList cliArgs = arguments.mid(2);
+
+			if (cliCommand == QString::fromLatin1("export")) {
+				QString inputFile;
+				QString outputFile;
+				for (int i = 0; i < cliArgs.size(); ++i) {
+					const QString &arg = cliArgs[i];
+					if (arg == QString::fromLatin1("-i") && i + 1 < cliArgs.size()) {
+						inputFile = cliArgs[++i];
+					} else if (arg == QString::fromLatin1("-o") && i + 1 < cliArgs.size()) {
+						outputFile = cliArgs[++i];
+					} else if (arg.startsWith(QString::fromLatin1("-"))) {
+						std::cerr << "ignoring flag " << arg.toStdString() << "\n";
+					} else if (inputFile.isEmpty()) {
+						inputFile = arg;
+					} else {
+						std::cerr << "ignoring positional argument " << arg.toStdString() << "\n";
+					}
+				}
+				if (inputFile.isEmpty()) {
+					std::cerr << "exports a map (omap/xmap) as PDF.\nusage: mapper --cli export [-i] <INPUT> [-o <OUTPUT>]\n";
+				}
+				// TODO: if outputFile is empty, create a filename from the inputFile
+				std::cout << "input: " << inputFile.toStdString() << "\n";
+				std::cout << "output: " << outputFile.toStdString() << "\n";
+			} else {
+				std::cerr << "Unknown CLI command: " << cliCommand.toStdString() << "\n";
+			}
+			QApplication::quit();
+			return;
+		}
+
 		for (auto const& arg : arguments)
 			first_window->openPathLater(arg);
 		
